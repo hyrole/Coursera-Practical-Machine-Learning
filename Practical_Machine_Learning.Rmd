@@ -1,0 +1,80 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "M. Hairul Othman"
+date: "Sunday, January 31, 2016"
+---
+
+##Introduction
+
+Data from accelerometers on the belt, forearm, arm, and dumbell of 6 participant will be used in this analysis. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The five ways are exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Only Class A corresponds to correct performance. The goal of this project is to predict the manner in which they did the exercise, i.e., Class A to E. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+##1. Data Processing
+
+>Load the data sets
+```{r}
+training<-read.table("data/pml-training.csv", header=TRUE, sep=",")
+testing<-read.table("data/pml-testing.csv",header=TRUE, sep=",")
+```
+
+>Install and load packages as follow:
+```{r}
+library(caret)
+library(rattle)
+library(gridExtra)
+```
+
+##2. Data Cleaning
+
+>Step 1: Remove missing values:
+```{r}
+training <- training[, colSums(is.na(training)) == 0]
+testing <- testing[, colSums(is.na(testing)) == 0]
+```
+
+>Step 2: Removes the inital seven columns of dimensional data:
+```{r}
+trainData <- training[, -c(1:7)]
+testData <- testing[, -c(1:7)]
+```
+
+>Step 3: Splitting data
+This method will be used to increase data accuracy and minimize sample error. The full testing data is split randomly with a set seed with 80% of the data into the training sample and 20% of the data used as cross-validation. Samples data were sliced by column against the feature set to fit the final model.
+
+```{r}
+set.seed(7826)
+inTrain <- createDataPartition(trainData$classe, p = 0.7, list = FALSE)
+train <- trainData[inTrain, ]
+valid <- trainData[-inTrain, ]
+```
+
+##3. Prediction Algorithms
+To predict the outcome, random forests model will be used.
+
+```{r}
+#install.packages('caret', dependencies = TRUE)
+library(caret)
+library(rpart)
+library(randomForest)
+
+control <- trainControl(method = "cv", number = 5)
+fit_rf <- train(classe ~ ., data = train, method = "rf", trControl = control)
+print(fit_rf, digits = 4)
+
+# predict outcomes using validation set
+fit_rf <- predict(fit_rf, valid)
+# Show prediction result
+(fit_rf <- confusionMatrix(valid$classe, fit_rf))
+```
+
+>Find the accuracy rate:
+```{r}
+(accuracy_rf <- conf_rf$overall[1])
+```
+
+The accuracy rate is 0.991, and so the out-of-sample error rate is 0.009. Random forests leads to high accuracy.
+
+##4. Prediction on Testing Set
+In this section, random forests to predict the outcome variable classe for the testing set:
+```{r}
+(predict(fit_rf, testData))
+```
