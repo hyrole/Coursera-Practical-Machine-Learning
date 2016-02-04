@@ -59,9 +59,8 @@ library(randomForest)
 control <- trainControl(method = "cv", number = 5)
 ```
 
-
 ##4. Prediction on Testing Set
->Boosting Model
+Boosting Model
 *Fit model with boosting algorithm and 10-fold cross validation to predict classe with all other predictors.
 *Plot accuracy of this model on the scale [0.9, 1].
 
@@ -69,16 +68,18 @@ control <- trainControl(method = "cv", number = 5)
 set.seed(123)
 boostFit <- train(classe ~ ., method = "gbm", data = training, verbose = F, trControl = trainControl(method = "cv", number = 10))
 
-#Plot boosting
+Plot boosting
+```{r}
 boostFit
 plot(boostFit, ylim = c(0.9, 1))
 ```
 The boosting algorithm generated a good model with accuracy = 0.997.
 
->Random Forest Model
+Random Forest Model
 *In this section, random forests to predict the outcome variable classe for the testing set.
 *Fit model with random forests algorithm and 10-fold cross validation to predict classe with all other predictors.
 *Plot accuracy of the model on the same scale as boosting model.
+
 ```{r}
 fit_rf <- train(classe ~ ., data = train, method = "rf", trControl = control)
 print(fit_rf, digits = 4)
@@ -86,19 +87,20 @@ print(fit_rf, digits = 4)
 fit_rf <- train(classe ~ ., data = train, method = "rf", trControl = control)
 print(fit_rf, digits = 4)
 
-# predict outcomes using validation set
 fit_rf <- predict(fit_rf, valid)
-# Show prediction result
+```
+
+Show prediction result
+```{r}
 (fit_rf <- confusionMatrix(valid$classe, fit_rf))
 
 (predict(fit_rf, testData))
 ```
 
->Find the accuracy rate:
+Find the accuracy rate:
 ```{r}
 (accuracy_rf <- conf_rf$overall[1])
 ```
-
 
 The random forests algorithm generated a very accurate model with accuracy close to 1. Compared to boosting model, this model generally has better performance in terms of accuracy as we see from the plots.
 
