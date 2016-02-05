@@ -12,8 +12,8 @@ Data from accelerometers on the belt, forearm, arm, and dumbell of 6 participant
 
 >Load the data sets
 ```{r}
-training<-read.table("data/pml-training.csv", header=TRUE, sep=",")
-testing<-read.table("data/pml-testing.csv",header=TRUE, sep=",")
+training<-read.csv("data/pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testing<-read.csv('data/pml-testing.csv', na.strings=c("NA","#DIV/0!", ""))
 ```
 
 >Install and load packages as follow:
@@ -21,6 +21,14 @@ testing<-read.table("data/pml-testing.csv",header=TRUE, sep=",")
 library(caret)
 library(rattle)
 library(gridExtra)
+library(rpart)
+library(randomForest)
+```
+
+>Setting the overall seed for reproduceability
+
+```{r}
+set.seed(1234)
 ```
 
 ##2. Data Cleaning
@@ -37,75 +45,51 @@ trainData <- training[, -c(1:7)]
 testData <- testing[, -c(1:7)]
 ```
 
->Step 3: Splitting data
-This method will be used to increase data accuracy and minimize sample error. The full testing data is split randomly with a set seed with 80% of the data into the training sample and 20% of the data used as cross-validation. Samples data were sliced by column against the feature set to fit the final model.
+>Step 3: Trim dataset
+This method will be used to increase data accuracy and minimize sample error. Partitioning the training data set to allow cross-validation. The training data set contains 53 variables and 19622 obs. The testing data set contains 53 variables and 20 obs. In order to perform cross-validation, the training data set is partionned into 2 sets: subTraining (75%) and subTesting (25%). This will be performed using random subsampling without replacement. Samples data were sliced by column against the feature set to fit the final model.
+
+Partitioning the training data set to allow cross-validation.
 
 ```{r}
-set.seed(7826)
-inTrain <- createDataPartition(trainData$classe, p = 0.7, list = FALSE)
-train <- trainData[inTrain, ]
-valid <- trainData[-inTrain, ]
+inTrain <- createDataPartition(y=trainData$classe, p=0.75, list=FALSE)
+subTrain <- trainData[inTrain, ]
+subTest <- trainData[-inTrain, ]
+dim(subTrain)
+dim(subTest)
 ```
 
 ##3. Prediction Algorithms
-To predict the outcome, random forests model will be used.
+To predict the outcome, Decision Tree model and Random Forests model will be used to predict the outcome variable classe for the testing set.
 
+>Desicion Tree
 ```{r}
-#install.packages('caret', dependencies = TRUE)
-library(caret)
-library(rpart)
-library(randomForest)
-
-control <- trainControl(method = "cv", number = 5)
+DT_Model <- rpart(classe ~ ., data=subTrain, method="class")
+DT_Predict <- predict(DT_Model, subTest, type="class")
 ```
 
-##4. Prediction on Testing Set
-Boosting Model
-*Fit model with boosting algorithm and 10-fold cross validation to predict classe with all other predictors.
-*Plot accuracy of this model on the scale [0.9, 1].
-
+Test results on our subTesting data set:
 ```{r}
-set.seed(123)
-boostFit <- train(classe ~ ., method = "gbm", data = training, verbose = F, trControl = trainControl(method = "cv", number = 10))
+confusionMatrix(DT_Predict, subTest$classe)
+````
 
-Plot boosting
-```{r}
-boostFit
-plot(boostFit, ylim = c(0.9, 1))
-```
-The boosting algorithm generated a good model with accuracy = 0.997.
-
-Random Forest Model
-*In this section, random forests to predict the outcome variable classe for the testing set.
+>Random Forest Model
 *Fit model with random forests algorithm and 10-fold cross validation to predict classe with all other predictors.
 *Plot accuracy of the model on the same scale as boosting model.
 
 ```{r}
-fit_rf <- train(classe ~ ., data = train, method = "rf", trControl = control)
-print(fit_rf, digits = 4)
-
-fit_rf <- train(classe ~ ., data = train, method = "rf", trControl = control)
-print(fit_rf, digits = 4)
-
-fit_rf <- predict(fit_rf, valid)
+RF_Model <- randomForest(classe ~. , data=subTrain, method="class")
+RF_Predict <- predict(RF_Model, subTest, type = "class")
+confusionMatrix(RF_Predict, subTest$classe)
 ```
 
-Show prediction result
+>Find the accuracy rate:
 ```{r}
-(fit_rf <- confusionMatrix(valid$classe, fit_rf))
-
-(predict(fit_rf, testData))
+#(accuracy_rf <- conf_rf$overall[1])
+predictFinal <- predict(RF_Model, testData)
+predictFinal
 ```
 
-Find the accuracy rate:
-```{r}
-(accuracy_rf <- conf_rf$overall[1])
-```
-
-The random forests algorithm generated a very accurate model with accuracy close to 1. Compared to boosting model, this model generally has better performance in terms of accuracy as we see from the plots.
-
-###5. Conclusion
-*Comparing model accuracy of the two models generated, random forests and boosting, random forests model has overall better accuracy.
-*The final random forests model contains 500 trees with 40 variables tried at each split. The five most important predictors in this model are r rownames(imp)[1:5].
-*Estimated out of sample error rate for the random forests model is 0.04% as reported by the final model.
-*Predict the test set and output results for automatic grader.
+###4. Conclusion
+*Comparing both models generated, Random Forests model shows better accuracy with rate 0.995 compared to Decission Tree model was 0.739.
+*The final Random Forests model contains 500 trees with 40 variables tried at each split. 
+*Estimated out of sample error rate for the Random Forests model is 0.04% as reported by the final model.
